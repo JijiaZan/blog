@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next muse use-motion" lang="en">
+<head>
+  <meta charset="UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/blog/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css" />
+
+
+
+
+
+
+
+<link href="/blog/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css" />
+
+<link href="/blog/css/main.css?v=5.1.4" rel="stylesheet" type="text/css" />
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/blog/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/blog/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/blog/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/blog/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="Hexo, NexT" />
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="​    本科毕设研究方向为分布式机器学习。现在有些后悔，发现这个方向要做出成功，需要很大的工程量，且并不能很好的可视化，虽然很有趣，但作为毕设并不好。距离毕设ddl还有一个半月大概 &gt;_&lt; ​    参数服务器是如今主流的异步分布式学习框架，被很多ml框架（MXNet等）所采用。希望通过仔细阅读这篇论文，带我入门分布式机器学习。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Parameter Server 论文阅读">
+<meta property="og:url" content="https://jijiazan.github.io/blog/2021/03/15/parameter-server/index.html">
+<meta property="og:site_name" content="Zanjijia&#39;s Blog">
+<meta property="og:description" content="​    本科毕设研究方向为分布式机器学习。现在有些后悔，发现这个方向要做出成功，需要很大的工程量，且并不能很好的可视化，虽然很有趣，但作为毕设并不好。距离毕设ddl还有一个半月大概 &gt;_&lt; ​    参数服务器是如今主流的异步分布式学习框架，被很多ml框架（MXNet等）所采用。希望通过仔细阅读这篇论文，带我入门分布式机器学习。">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://jijiazan.github.io/blog/2021/03/15/parameter-server/week6_p1.png">
+<meta property="og:image" content="https://jijiazan.github.io/blog/2021/03/15/parameter-server/week6_p2.png">
+<meta property="og:image" content="https://jijiazan.github.io/blog/2021/03/15/parameter-server/week6_p3.png">
+<meta property="og:image" content="https://jijiazan.github.io/blog/2021/03/15/parameter-server/week6_p4.png">
+<meta property="og:image" content="https://jijiazan.github.io/blog/2021/03/15/parameter-server/week6_p5.png">
+<meta property="og:image" content="https://jijiazan.github.io/blog/2021/03/15/parameter-server/week6_p6.png">
+<meta property="og:image" content="https://jijiazan.github.io/blog/2021/03/15/parameter-server/week6_p7.png">
+<meta property="article:published_time" content="2021-03-15T06:14:12.000Z">
+<meta property="article:modified_time" content="2021-03-15T06:40:01.382Z">
+<meta property="article:author" content="Zan Jijia">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://jijiazan.github.io/blog/2021/03/15/parameter-server/week6_p1.png">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '',
+    scheme: 'Muse',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: 'Author'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="https://jijiazan.github.io/blog/2021/03/15/parameter-server/"/>
+
+
+
+
+
+  <title>Parameter Server 论文阅读 | Zanjijia's Blog</title>
+  
+
+
+
+
+
+
+
+
+<meta name="generator" content="Hexo 5.4.0"></head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="en">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/blog/"  class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Zanjijia's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/blog/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br />
+            
+            Home
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-about">
+          <a href="/blog/about/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-user"></i> <br />
+            
+            About
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/blog/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br />
+            
+            Archives
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://jijiazan.github.io/blog/blog/2021/03/15/parameter-server/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/blog/images/avatar.jpg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Zanjijia's Blog">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Parameter Server 论文阅读</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">Posted on</span>
+              
+              <time title="Post created" itemprop="dateCreated datePublished" datetime="2021-03-15T14:14:12+08:00">
+                2021-03-15
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>​    本科毕设研究方向为分布式机器学习。现在有些后悔，发现这个方向要做出成功，需要很大的工程量，且并不能很好的可视化，虽然很有趣，但作为毕设并不好。距离毕设ddl还有一个半月大概 &gt;_&lt;</p>
+<p>​    参数服务器是如今主流的异步分布式学习框架，被很多ml框架（MXNet等）所采用。希望通过仔细阅读这篇论文，带我入门分布式机器学习。</p>
+<span id="more"></span>
+
+<h2 id="1-Related-Work"><a href="#1-Related-Work" class="headerlink" title="1. Related Work"></a>1. Related Work</h2><h3 id="1-1-异步算法"><a href="#1-1-异步算法" class="headerlink" title="1.1 异步算法"></a>1.1 异步算法</h3><ul>
+<li><p>Parament Service</p>
+<ol>
+<li><p>第一代ps使用memchached作文同步机制</p>
+<blockquote>
+<p>emchached与redis的区别:</p>
+<blockquote>
+<p>memchached是多核的分布式kv存储系统，在大数据流的情况下比redis性能更高</p>
+<p>redis支持持久化，且支持更多的数据类型</p>
+</blockquote>
+</blockquote>
+</li>
+<li><p>第二代YahooDLA提供了”更新”原语，以及负载均衡算法</p>
+</li>
+<li><p>第三代ps的特性</p>
+<ul>
+<li>灵活的一致性协议</li>
+<li>连续容错的能力 <!--机器出现错误时不用重启--></li>
+</ul>
+</li>
+</ol>
+</li>
+<li><p>GraphLab:</p>
+<p>使用图形抽象异步地调度通信，但是可扩展性差，不如mapreduce，且依赖粗粒度快照来恢复。</p>
+<p>ps的目标是实现异步性，但打破graphlab所受的限制</p>
+</li>
+</ul>
+<h3 id="1-2-同步算法（基于MapReduce）"><a href="#1-2-同步算法（基于MapReduce）" class="headerlink" title="1.2 同步算法（基于MapReduce）"></a>1.2 同步算法（基于MapReduce）</h3><ul>
+<li><p>Mahout基于hadoop</p>
+</li>
+<li><p>MLI基于Spark （PS的目标是具有MLI的<strong>保持iteration之间状态相同</strong>的能力）</p>
+</li>
+</ul>
+<h2 id="2-Machine-Learning"><a href="#2-Machine-Learning" class="headerlink" title="2. Machine Learning"></a>2. Machine Learning</h2><ul>
+<li><p>机器学习三个环节：</p>
+<p>feature extraction, the objective function, and learning.</p>
+<p>预处理可以通过MapReduce简单地完成，不在论文讨论范围内</p>
+</li>
+<li><p>使用<em><strong>distributed subgradient descent</strong></em>来检测性能</p>
+</li>
+</ul>
+<h3 id="2-1-论文目标"><a href="#2-1-论文目标" class="headerlink" title="2.1 论文目标"></a>2.1 论文目标</h3><ul>
+<li><p>在训练数据海量的场景下（数据量，数据维度都很高），模型的训练需要强大的算力和带宽</p>
+</li>
+<li><p>数据实时产生，模型也需要在线训练</p>
+</li>
+<li><p>PS聚焦于如何有效地执行这些算法</p>
+</li>
+<li><p>有监督学习：有label     </p>
+<p>无监督：没有label</p>
+</li>
+</ul>
+<h3 id="2-2-最小化损失函数"><a href="#2-2-最小化损失函数" class="headerlink" title="2.2 最小化损失函数"></a>2.2 最小化损失函数</h3><p>(在这篇论文中并不重要)</p>
+<ul>
+<li><p>目标函数 = 损失函数 + 正则化项</p>
+<p>$ F(w)= \sum^n_{i=1}l(x_i,y_i,w)+\Omega(w) $</p>
+<p>正则化项用来惩罚模型复杂度，防止过拟合，使结构化风险最小</p>
+</li>
+<li><p>模型复杂度与数据集大小的关系</p>
+<p>模型复杂度远大于数据量时，会出现过拟合。Ω[w]较大</p>
+<p>数据量远大于模型复杂度，则会欠拟合。l(x, y, w)较大</p>
+</li>
+<li><p>如何选择损失函数与正则函数在</p>
+</li>
+</ul>
+<h3 id="2-3-distributed-subgradient-descent"><a href="#2-3-distributed-subgradient-descent" class="headerlink" title="2.3 distributed subgradient descent"></a>2.3 distributed subgradient descent</h3><p>使用分布式梯度下降来检测框架性能</p>
+<ul>
+<li><p>算法流程图</p>
+<img src="/blog/2021/03/15/parameter-server/week6_p1.png" class="" title="分布式梯度下降算法"></li>
+<li><p>每个worker只需要加载自己数据的特征所指向的权值w，而不用加载所有的w。</p>
+<p>在特征值维度很高的情况下（万亿级别），可以使得worker轻松加载一部分w到内存中</p>
+<img src="/blog/2021/03/15/parameter-server/week6_p2.png" class="" title="每个worker加载参数数量"></li>
+</ul>
+<h3 id="2-4-Latent-Dirichlet-allocation"><a href="#2-4-Latent-Dirichlet-allocation" class="headerlink" title="2.4 Latent Dirichlet allocation"></a>2.4 Latent Dirichlet allocation</h3><h2 id="3-Architecture"><a href="#3-Architecture" class="headerlink" title="3. Architecture"></a>3. Architecture</h2><ul>
+<li>server manager：保证server之间的一致性（分配参数，检查server是否存活）</li>
+<li>server group：每个server保存一部分模型参数</li>
+<li>worker groups:<ul>
+<li>scheduler：分配任务，监视任务进度。如果worker增加或者删除，则重新分配任务。</li>
+<li>worker：保存一部分训练数据，只与server进行通讯（更新和检索参数）</li>
+</ul>
+</li>
+<li>对于在线训练的模型，一些worker正在推断，而另一些worker则在用新的数据训练模型</li>
+</ul>
+<h3 id="3-1-key-value-Vectors"><a href="#3-1-key-value-Vectors" class="headerlink" title="3.1 (key,value)Vectors"></a>3.1 (key,value)Vectors</h3><ul>
+<li>参数以键值对形式保存。比如梯度下降算法中，参数保存的形式为：（feature id，weight）</li>
+<li>键值对可以被本地或者远程读写</li>
+<li>同时ps将kv看做vectors，提供了一些列的线性代数运算接口，比如矩阵加法，矩阵乘法。</li>
+<li>为此，将key看做是有序的，且不存在的key视为0</li>
+</ul>
+<h3 id="3-2-Range-Push-and-Pull"><a href="#3-2-Range-Push-and-Pull" class="headerlink" title="3.2 Range Push and Pull"></a>3.2 Range Push and Pull</h3><ul>
+<li>w.push(R, dest)将键范围R中所有的权值w发送到目标，目标可以是一个特定的节点，也可以是一个节点组，比如服务器组。也可以用来发送其他local数据，比如梯度g</li>
+</ul>
+<h3 id="3-3-Asynchronous-Tasks-and-Dependency"><a href="#3-3-Asynchronous-Tasks-and-Dependency" class="headerlink" title="3.3 Asynchronous Tasks and Dependency"></a>3.3 Asynchronous Tasks and Dependency</h3><ul>
+<li>返回值可能是user-defined function，也有可能是pull请求的kv，或者是一个确认值</li>
+<li>判断一个task完成：task的请求被返回，且其所有子任务的请求也被返回</li>
+<li>Dependency：通过<em>execute-after-finished</em> 在两个任务中来确保串行化</li>
+</ul>
+<h3 id="3-4-Flexible-Consistency"><a href="#3-4-Flexible-Consistency" class="headerlink" title="3.4 Flexible Consistency"></a>3.4 Flexible Consistency</h3><img src="/blog/2021/03/15/parameter-server/week6_p3.png" class="" title="参数不一致">
+
+<ul>
+<li><p>异步导致数据不一致性，数据不一致可能导致收敛变慢</p>
+<p>（iter11计算时，iter10的更新还没push，所以10和11使用的数据是一样的）</p>
+</li>
+<li><p>影响收敛变慢的因素：算法对数据不一致的敏感程度？特征的相关性，硬件之间的性能差距</p>
+</li>
+<li><p>三种一致性模型</p>
+<img src="/blog/2021/03/15/parameter-server/week6_p4.png" class="" title="一致性模型">
+
+<p>​    a) 串行</p>
+<p>​    b) 并行</p>
+<p>​    c) t时刻的task会堵塞住，直到（t - $\tau$）时刻的task都完成。$\tau$ = 0，即a；$\tau$=$\infty$，即b；</p>
+</li>
+</ul>
+<h3 id="3-5-User-defined-Filter"><a href="#3-5-User-defined-Filter" class="headerlink" title="3.5 User-defined Filter"></a>3.5 User-defined Filter</h3><p>有选择性的同步一些参数kv，提供了细粒度的一致性保持。</p>
+<ul>
+<li><em>signifi- cantly modified</em> filter：只push自上次同步以来更改超过阈值的weight</li>
+<li><em>KKT</em> ：worker只push可能影响本server上的weights的梯度。</li>
+</ul>
+<h2 id="4-Implementation"><a href="#4-Implementation" class="headerlink" title="4. Implementation"></a>4. Implementation</h2><h3 id="4-1-Vector-clock"><a href="#4-1-Vector-clock" class="headerlink" title="4.1 Vector clock"></a>4.1 Vector clock</h3><ul>
+<li><p>在每个kv对上记录每个node的时间戳。</p>
+</li>
+<li><p>如果一个节点range push，那么range内所有参数的关于这个node的timestamp都是一样的。可以被压缩成一个range vector clock</p>
+<p>$vc_i(R)=t$，即 $k\in R, vc_i(k)=t, i表示node_i$</p>
+</li>
+<li><p>初始每个node $i$ 存储一个完整的Range，初始值timestamp为0.然后每次收到range set，会将一个range划分成三个。</p>
+<img src="/blog/2021/03/15/parameter-server/week6_p5.png" class="" title="range split算法"></li>
+</ul>
+<h3 id="4-2-Message"><a href="#4-2-Message" class="headerlink" title="4.2 Message"></a>4.2 Message</h3><ul>
+<li><p>一条消息由<strong>kv组成的列表</strong>和range vector clock组成</p>
+<p>$[vc(R),(k1,v1),…,(kp,vp)] \quad k_j \in R \quad and \quad j \in {1,…,p}$</p>
+</li>
+<li><p>消息是可以划分的，划分如Algorithm2</p>
+</li>
+<li><p>缓存key list，因为训练数据通常不变</p>
+</li>
+<li><p>value可能会有很多0，用user filter过滤，只发送非0</p>
+</li>
+<li><p>用snappy压缩</p>
+</li>
+</ul>
+<h3 id="4-3-Consisting-Hash"><a href="#4-3-Consisting-Hash" class="headerlink" title="4.3 Consisting Hash"></a>4.3 <a target="_blank" rel="noopener" href="https://www.jianshu.com/p/528ce5cd7e8f">Consisting Hash</a></h3><ul>
+<li><p>server node 以一致性哈希算法存储kv对</p>
+</li>
+<li><p>server node数量不够时，采用虚拟节点解决数据倾斜</p>
+</li>
+<li><p>Server manager来管理</p>
+<img src="/blog/2021/03/15/parameter-server/week6_p6.png" class="" title="一致性哈希"></li>
+</ul>
+<h3 id="4-4-Replication-and-Consistency"><a href="#4-4-Replication-and-Consistency" class="headerlink" title="4.4 Replication and Consistency"></a>4.4 Replication and Consistency</h3><ul>
+<li><p>每个server复制逆时针k个range，作为备份，称为slave</p>
+</li>
+<li><p>master的变动会带着timestamp被复制到slave</p>
+</li>
+<li><p>优化：在聚合操作后再复制，而不是每一次，减轻通讯负担</p>
+<img src="/blog/2021/03/15/parameter-server/week6_p7.png" class="" title="复制优化"></li>
+</ul>
+<h3 id="4-5-Server-Management"><a href="#4-5-Server-Management" class="headerlink" title="4.5 Server Management"></a>4.5 Server Management</h3><ul>
+<li>新增节点<ul>
+<li>server manager分配一段hash range给新的节点，原持有这部分节点的server会split</li>
+<li>新增的server N，从其他node S 中抓取参数<ul>
+<li>S将所有在range中的kv对拷贝给N</li>
+<li>在这期间S不响应有关这部分参数的操作，而是保存下来，在拷贝完成后，交给S处理</li>
+</ul>
+</li>
+<li>server manage广播新增server，接收者删除自己持有的Range内的kv对，split原本对这部分数据的操作，并重新发送给新node</li>
+</ul>
+</li>
+<li>删除节点<ul>
+<li>通过心跳检测节点存活</li>
+<li>如果死亡，将这部分Range分配给其他server</li>
+</ul>
+</li>
+</ul>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/blog/2021/03/11/set-up-my-blog/" rel="next" title="Github Pages + Hexo + NexT 搭建个人博客">
+                <i class="fa fa-chevron-left"></i> Github Pages + Hexo + NexT 搭建个人博客
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            Table of Contents
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            Overview
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image"
+                src="/blog/images/avatar.jpg"
+                alt="" />
+            
+              <p class="site-author-name" itemprop="name"></p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/blog/archives/%7C%7C%20archive">
+              
+                  <span class="site-state-item-count">3</span>
+                  <span class="site-state-item-name">posts</span>
+                </a>
+              </div>
+            
+
+            
+
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#1-Related-Work"><span class="nav-text">1. Related Work</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-1-%E5%BC%82%E6%AD%A5%E7%AE%97%E6%B3%95"><span class="nav-text">1.1 异步算法</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-2-%E5%90%8C%E6%AD%A5%E7%AE%97%E6%B3%95%EF%BC%88%E5%9F%BA%E4%BA%8EMapReduce%EF%BC%89"><span class="nav-text">1.2 同步算法（基于MapReduce）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-Machine-Learning"><span class="nav-text">2. Machine Learning</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-%E8%AE%BA%E6%96%87%E7%9B%AE%E6%A0%87"><span class="nav-text">2.1 论文目标</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-%E6%9C%80%E5%B0%8F%E5%8C%96%E6%8D%9F%E5%A4%B1%E5%87%BD%E6%95%B0"><span class="nav-text">2.2 最小化损失函数</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-3-distributed-subgradient-descent"><span class="nav-text">2.3 distributed subgradient descent</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-4-Latent-Dirichlet-allocation"><span class="nav-text">2.4 Latent Dirichlet allocation</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-Architecture"><span class="nav-text">3. Architecture</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-1-key-value-Vectors"><span class="nav-text">3.1 (key,value)Vectors</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-Range-Push-and-Pull"><span class="nav-text">3.2 Range Push and Pull</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-3-Asynchronous-Tasks-and-Dependency"><span class="nav-text">3.3 Asynchronous Tasks and Dependency</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-4-Flexible-Consistency"><span class="nav-text">3.4 Flexible Consistency</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-5-User-defined-Filter"><span class="nav-text">3.5 User-defined Filter</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-Implementation"><span class="nav-text">4. Implementation</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#4-1-Vector-clock"><span class="nav-text">4.1 Vector clock</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-2-Message"><span class="nav-text">4.2 Message</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-3-Consisting-Hash"><span class="nav-text">4.3 Consisting Hash</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-4-Replication-and-Consistency"><span class="nav-text">4.4 Replication and Consistency</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-5-Server-Management"><span class="nav-text">4.5 Server Management</span></a></li></ol></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Zan Jijia</span>
+
+  
+</div>
+
+
+  <div class="powered-by">Powered by <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a></div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">Theme &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Muse</a> v5.1.4</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/blog/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/blog/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/blog/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/blog/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/blog/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/blog/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/blog/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/blog/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+  
+  <script type="text/javascript" src="/blog/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/blog/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/blog/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
